@@ -19,17 +19,15 @@ func NewRepository(path string) *Repository {
 }
 
 func (r *Repository) Init() error {
-	fmt.Println(r.GitDir, r.WorkTree)
+	if _, err := os.Stat(r.GitDir); !os.IsNotExist(err) {
+		return fmt.Errorf("repository at %s already exists", r.GitDir)
+	}
 
 	dirs := []string{
 		r.GitDir,
 		filepath.Join(r.GitDir, "objects"),
 		filepath.Join(r.GitDir, "refs"),
 		filepath.Join(r.GitDir, "refs/dirs"),
-	}
-
-	if _, err := os.Stat(r.GitDir); !os.IsNotExist(err) {
-		return fmt.Errorf("repository at %s already exists", r.GitDir)
 	}
 
 	for _, dir := range dirs {
