@@ -20,7 +20,7 @@ func NewRepository(path string) *Repository {
 
 func (r *Repository) Init() error {
 	if _, err := os.Stat(r.GitDir); !os.IsNotExist(err) {
-		return fmt.Errorf("repository at %s already exists", r.GitDir)
+		return fmt.Errorf("repository in %s already exists", r.GitDir)
 	}
 
 	dirs := []string{
