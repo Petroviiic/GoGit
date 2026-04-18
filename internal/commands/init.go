@@ -21,9 +21,6 @@ func RunInit(args []string) error {
 	repo := core.NewRepository(absPath)
 	err = repo.Init()
 	if err != nil {
-		// if errors.Is(err, fs.ErrExist){
-		// 	return fmt.Errorf("")
-		// }
 		return fmt.Errorf("failed to initialize repository: %w", err)
 	}
 
