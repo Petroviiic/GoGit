@@ -86,7 +86,7 @@ func addFile(path string, repo *core.Repository, index map[string]string) error 
 	blob := core.NewBlob(content)
 
 	//storing under hash[:2]/hash[2:]
-	blob_hash, err := StoreObject(&blob.BaseObject, repo)
+	blob_hash, err := blob.StoreObject(repo)
 	if err != nil {
 		return err
 	}
@@ -99,26 +99,4 @@ func addFile(path string, repo *core.Repository, index map[string]string) error 
 	index[path] = blob_hash
 
 	return nil
-}
-
-func StoreObject(o *core.BaseObject, repo *core.Repository) (string, error) {
-	hash := o.Hash()
-
-	objDir := filepath.Join(repo.ObjectsDir, hash[:2])
-	objFile := filepath.Join(objDir, hash[2:])
-
-	content, err := o.Serialize()
-	if err != nil {
-		return "", err
-	}
-
-	err = os.MkdirAll(objDir, 0755)
-	if err != nil {
-		return "", err
-	}
-
-	if err := os.WriteFile(objFile, content, 0644); err != nil {
-		return "", err
-	}
-	return hash, nil
 }
