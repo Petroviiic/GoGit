@@ -10,7 +10,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: gogit <command>")
+		fmt.Println("Usage: go run ./... <command>")
 		os.Exit(1)
 	}
 
@@ -19,7 +19,7 @@ func main() {
 
 	repo, err := core.NewRepository(args)
 
-	if err != nil {
+	if err != nil && command != "init" {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
