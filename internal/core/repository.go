@@ -9,13 +9,32 @@ import (
 type Repository struct {
 	WorkTree string
 	GitDir   string
+
+	ObjectsDir string
+	RefsDir    string
+	IndexPath  string
 }
 
-func NewRepository(path string) *Repository {
-	return &Repository{
-		WorkTree: path,
-		GitDir:   filepath.Join(path, ".gogit"),
+func NewRepository(args []string) (*Repository, error) {
+	path := "."
+	// if len(args) > 0 {
+	// 	path = args[0]
+	// }
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
 	}
+
+	gitDir := filepath.Join(path, ".gogit")
+
+	return &Repository{
+		WorkTree:   absPath,
+		GitDir:     gitDir,
+		ObjectsDir: filepath.Join(gitDir, "objects"),
+		RefsDir:    filepath.Join(gitDir, "refs"),
+		IndexPath:  filepath.Join(gitDir, "index"),
+	}, nil
 }
 
 func (r *Repository) Init() error {
@@ -43,7 +62,7 @@ func (r *Repository) Init() error {
 	}
 
 	indexPath := filepath.Join(r.GitDir, "index")
-	if err := os.WriteFile(indexPath, []byte(""), 0644); err != nil {
+	if err := os.WriteFile(indexPath, []byte("{}"), 0644); err != nil {
 		return err
 	}
 	return nil
