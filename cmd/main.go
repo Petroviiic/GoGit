@@ -39,6 +39,43 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "commit":
+		var message, author string
+		author = "GoGit User <user@gogit.com>"
+
+		for i := 0; i < len(args); i++ {
+			switch args[i] {
+			case "-m":
+				if i+1 < len(args) {
+					if args[i+1] == "--author" {
+						fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
+						os.Exit(1)
+					}
+					message = args[i+1]
+					i++
+				}
+			case "--author":
+				if i+1 < len(args) {
+					if args[i+1] == "-m" {
+						fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
+						os.Exit(1)
+					}
+					author = args[i+1]
+					i++
+				}
+			}
+		}
+
+		if message == "" {
+			fmt.Fprintln(os.Stderr, "Error: Commit message is required (-m)")
+			os.Exit(1)
+		}
+
+		if err := commands.RunCommit(repo, message, author); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		os.Exit(1)
