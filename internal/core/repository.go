@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,13 +29,18 @@ func NewRepository(args []string) (*Repository, error) {
 
 	gitDir := filepath.Join(path, ".gogit")
 
-	return &Repository{
+	repo := &Repository{
 		WorkTree:   absPath,
 		GitDir:     gitDir,
 		ObjectsDir: filepath.Join(gitDir, "objects"),
 		RefsDir:    filepath.Join(gitDir, "refs"),
 		IndexPath:  filepath.Join(gitDir, "index"),
-	}, nil
+	}
+
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		return repo, fmt.Errorf("repository not found: .gogit")
+	}
+	return repo, nil
 }
 
 func (r *Repository) Init() error {
@@ -65,5 +71,33 @@ func (r *Repository) Init() error {
 	if err := os.WriteFile(indexPath, []byte("{}"), 0644); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (r *Repository) LoadIndex() (map[string]string, error) {
+	indexRaw, err := os.ReadFile(r.IndexPath)
+	if err != nil {
+		return nil, err
+	}
+	//reading index
+	var index map[string]string
+	err = json.Unmarshal(indexRaw, &index)
+	if err != nil {
+		return nil, err
+	}
+
+	return index, err
+}
+
+func (r *Repository) SaveIndex(index map[string]string) error {
+	newIndex, err := json.MarshalIndent(index, "", "  ")
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(r.IndexPath, newIndex, 0644)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
