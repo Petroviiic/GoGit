@@ -96,7 +96,7 @@ func addFile(path string, repo *core.Repository, index map[string]string) error 
 	// if err != nil {
 	// 	return err
 	// }
-	index[path] = blob_hash
+	index[filepath.ToSlash(path)] = blob_hash
 
 	return nil
 }
