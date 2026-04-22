@@ -25,6 +25,10 @@ func main() {
 	}
 
 	switch command {
+	case "test":
+		//add anything
+		commands.TestFunc(repo)
+
 	case "init":
 		if err := commands.RunInit(repo); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
