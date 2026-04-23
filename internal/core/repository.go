@@ -1,8 +1,11 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -14,6 +17,7 @@ type Repository struct {
 	ObjectsDir string
 	RefsDir    string
 	IndexPath  string
+	HeadPath   string
 }
 
 func NewRepository(args []string) (*Repository, error) {
@@ -33,8 +37,9 @@ func NewRepository(args []string) (*Repository, error) {
 		WorkTree:   absPath,
 		GitDir:     gitDir,
 		ObjectsDir: filepath.Join(gitDir, "objects"),
-		RefsDir:    filepath.Join(gitDir, "refs"),
+		RefsDir:    filepath.Join(gitDir, "refs/heads"),
 		IndexPath:  filepath.Join(gitDir, "index"),
+		HeadPath:   filepath.Join(gitDir, "HEAD"),
 	}
 
 	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
@@ -52,7 +57,7 @@ func (r *Repository) Init() error {
 		r.GitDir,
 		filepath.Join(r.GitDir, "objects"),
 		filepath.Join(r.GitDir, "refs"),
-		filepath.Join(r.GitDir, "refs/dirs"),
+		filepath.Join(r.GitDir, "refs/heads"),
 	}
 
 	for _, dir := range dirs {
@@ -100,4 +105,38 @@ func (r *Repository) SaveIndex(index map[string]string) error {
 	}
 
 	return nil
+}
+
+func (r *Repository) GetCurrentBranch() string {
+	if _, err := os.Stat(r.HeadPath); !os.IsNotExist(err) {
+		return "main"
+	}
+
+	data, err := os.ReadFile(r.HeadPath)
+	if err != nil {
+		return "main"
+	}
+
+	if bytes.HasPrefix(data, []byte("ref: refs/heads/")) {
+		return string(data[16:])
+	}
+	return "HEAD" //detached head
+}
+func (r *Repository) GetBranchCommit(branch string) string {
+	if _, err := os.Stat(r.RefsDir); os.IsNotExist(err) {
+		return ""
+	}
+
+	branchFile := filepath.Join(r.RefsDir, branch)
+
+	if _, err := os.Stat(branchFile); errors.Is(err, fs.ErrNotExist) {
+		return ""
+	}
+
+	data, err := os.ReadFile(branchFile)
+
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
