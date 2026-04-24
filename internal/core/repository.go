@@ -157,3 +157,14 @@ func (repo *Repository) LoadObject(objectHash string) (GitObject, error) {
 
 	return Deserialize(data)
 }
+
+func (repo *Repository) SetBranchCommit(branch, hash string) error {
+	branchFile := filepath.Join(repo.RefsDir, branch)
+
+	err := os.WriteFile(branchFile, []byte(hash+"\n"), 0644)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
