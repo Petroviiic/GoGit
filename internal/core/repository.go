@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Repository struct {
@@ -118,7 +119,7 @@ func (r *Repository) GetCurrentBranch() string {
 	}
 
 	if bytes.HasPrefix(data, []byte("ref: refs/heads/")) {
-		return string(data[16:])
+		return strings.TrimSpace(string(data[16:]))
 	}
 	return "HEAD" //detached head
 }
@@ -138,17 +139,14 @@ func (r *Repository) GetBranchCommit(branch string) string {
 	if err != nil {
 		return ""
 	}
-	return string(data)
+
+	return strings.TrimSpace(string(data))
 }
 
 func (repo *Repository) LoadObject(objectHash string) (GitObject, error) {
 	objDir := filepath.Join(repo.ObjectsDir, objectHash[:2])
 
 	objFile := filepath.Join(objDir, objectHash[2:])
-
-	if _, err := os.Stat(objFile); !errors.Is(err, os.ErrExist) {
-		return nil, err
-	}
 
 	data, err := os.ReadFile(objFile)
 	if err != nil {
