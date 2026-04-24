@@ -8,7 +8,6 @@ import (
 )
 
 func RunCommit(repo *core.Repository, message, author string) error {
-	fmt.Println(message, author)
 	index, err := repo.LoadIndex()
 
 	if err != nil {
@@ -17,7 +16,8 @@ func RunCommit(repo *core.Repository, message, author string) error {
 
 	currentBranch := repo.GetCurrentBranch()
 	if len(index) == 0 {
-		return fmt.Errorf("nothing to commit. staging area empty")
+		fmt.Printf("nothing to commit. staging area empty")
+		return nil
 	}
 	branchCommit := repo.GetBranchCommit(currentBranch)
 	parentHashes := []string{branchCommit}
@@ -41,7 +41,9 @@ func RunCommit(repo *core.Repository, message, author string) error {
 				continue
 			}
 			if c.(*core.Commit).TreeHash == treeHash {
-				return fmt.Errorf("Your branch is up to date with '%s'.", currentBranch)
+				fmt.Printf("Your branch is up to date with '%s'.", currentBranch)
+				return nil
+
 			}
 		}
 	}
