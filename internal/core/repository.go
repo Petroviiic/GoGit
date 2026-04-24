@@ -140,3 +140,20 @@ func (r *Repository) GetBranchCommit(branch string) string {
 	}
 	return string(data)
 }
+
+func (repo *Repository) LoadObject(objectHash string) (GitObject, error) {
+	objDir := filepath.Join(repo.ObjectsDir, objectHash[:2])
+
+	objFile := filepath.Join(objDir, objectHash[2:])
+
+	if _, err := os.Stat(objFile); !errors.Is(err, os.ErrExist) {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(objFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return Deserialize(data)
+}
