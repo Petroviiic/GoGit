@@ -53,7 +53,7 @@ func addPath(path string, repo *core.Repository) error {
 
 func addDirectory(path string, repo *core.Repository, index map[string]string) error {
 	var files []string
-	filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
+	_ = filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
 			files = append(files, path)
 		}
