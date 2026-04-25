@@ -123,6 +123,13 @@ func (r *Repository) GetCurrentBranch() string {
 	}
 	return "HEAD" //detached head
 }
+
+func (r *Repository) SetCurrentBranch(newBranch string) error {
+	ref := fmt.Sprintf("ref: refs/heads/%s\n", newBranch)
+
+	return os.WriteFile(r.HeadPath, []byte(ref), 0644)
+}
+
 func (r *Repository) GetBranchCommit(branch string) string {
 	if _, err := os.Stat(r.RefsDir); os.IsNotExist(err) {
 		return ""
