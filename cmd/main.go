@@ -80,7 +80,6 @@ func main() {
 			os.Exit(1)
 		}
 	case "checkout":
-		fmt.Println(args)
 		if len(args) > 2 {
 			fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
 			os.Exit(1)
