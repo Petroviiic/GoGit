@@ -126,3 +126,22 @@ func CreateTreeStructure(folderRoot *HierarchyNode, repo *Repository) (string, e
 
 	return finalRootEntry.Hash, nil
 }
+
+func GetFilesFromTreeHash(hash string, repo *Repository, parentPath string, result *[]string) error {
+	obj, err := repo.LoadObject(hash)
+	if err != nil {
+		return err
+	}
+	tree := obj.(*Tree)
+
+	for _, entry := range tree.Entries {
+		if entry.Mode == "100644" {
+			*result = append(*result, filepath.Join(parentPath, entry.Name))
+		} else {
+			if err := GetFilesFromTreeHash(entry.Hash, repo, filepath.Join(parentPath, entry.Name), result); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
