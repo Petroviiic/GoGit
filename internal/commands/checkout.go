@@ -10,11 +10,27 @@ import (
 )
 
 func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error {
-	fmt.Println(branch, shouldCreate)
-
 	lastBranch := repo.GetCurrentBranch()
+
+	if lastBranch == branch {
+		return fmt.Errorf("you are already on branch %s", branch)
+	}
+
+	index, err := repo.LoadIndex()
+
+	if err != nil {
+		return err
+	}
+
+	if len(index) > 0 {
+		return fmt.Errorf("staging area is not empty. commit changes before checkout")
+	}
+
 	lastCommit := repo.GetBranchCommit(lastBranch)
 
+	if lastCommit == "" {
+		return fmt.Errorf("no commits yet, cannot create a branch")
+	}
 	commitObj, err := repo.LoadObject(lastCommit)
 	if err != nil {
 		return err
@@ -48,7 +64,7 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	if err := RemoveOldFiles(lastBranchFiles); err != nil {
+	if err := RemoveOldFiles(lastBranchFiles, repo); err != nil {
 		return err
 	}
 
@@ -63,15 +79,19 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
+	if err := repo.SaveIndex(map[string]string{}); err != nil {
+		return err
+	}
 	fmt.Println(lastBranch, lastCommit)
 
 	fmt.Printf("switched to branch %s", branch)
 	return nil
 }
 
-func RemoveOldFiles(filesToRemove []string) error {
+func RemoveOldFiles(filesToRemove []string, repo *core.Repository) error {
 	for _, file := range filesToRemove {
-		if err := os.Remove(file); err != nil {
+		fullPath := filepath.Join(repo.WorkTree, file)
+		if err := os.Remove(fullPath); err != nil {
 			fmt.Println(err)
 		}
 	}
@@ -102,7 +122,7 @@ func RestoreWorkingDirectoryFiles(treeHash string, parentPath string, repo *core
 				fmt.Println(err)
 			}
 			if err := RestoreWorkingDirectoryFiles(entry.Hash, filepath.Join(parentPath, entry.Name), repo); err != nil {
-				return err
+				fmt.Println(err)
 			}
 		}
 	}
