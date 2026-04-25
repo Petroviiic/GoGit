@@ -79,7 +79,29 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "checkout":
+		fmt.Println(args)
+		if len(args) > 2 {
+			fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
+			os.Exit(1)
+		}
 
+		shouldCreate := false
+		if len(args) == 2 {
+			if args[0] != "-b" {
+				fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
+				os.Exit(1)
+			} else {
+				shouldCreate = true
+			}
+		}
+
+		branch := args[len(args)-1]
+
+		if err := commands.RunCheckout(branch, shouldCreate, repo); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		os.Exit(1)
