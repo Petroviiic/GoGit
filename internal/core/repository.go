@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -109,18 +108,16 @@ func (r *Repository) SaveIndex(index map[string]string) error {
 }
 
 func (r *Repository) GetCurrentBranch() string {
-	if _, err := os.Stat(r.HeadPath); !os.IsNotExist(err) {
-		return "main"
-	}
-
 	data, err := os.ReadFile(r.HeadPath)
 	if err != nil {
 		return "main"
 	}
+	content := strings.TrimSpace(string(data))
 
-	if bytes.HasPrefix(data, []byte("ref: refs/heads/")) {
-		return strings.TrimSpace(string(data[16:]))
+	if strings.HasPrefix(content, "ref: refs/heads/") {
+		return strings.TrimPrefix(content, "ref: refs/heads/")
 	}
+
 	return "HEAD" //detached head
 }
 
