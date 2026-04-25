@@ -59,7 +59,7 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	if err := RestoreWorkingDirectoryFiles(newBranchCommit.(*core.Commit).TreeHash); err != nil {
+	if err := RestoreWorkingDirectoryFiles(newBranchCommit.(*core.Commit).TreeHash, "", repo); err != nil {
 		return err
 	}
 
@@ -69,9 +69,42 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 	return nil
 }
 
-func RemoveOldFiles(any) error {
+func RemoveOldFiles(filesToRemove []string) error {
+	for _, file := range filesToRemove {
+		if err := os.Remove(file); err != nil {
+			fmt.Println(err)
+		}
+	}
+
 	return nil
 }
-func RestoreWorkingDirectoryFiles(any) error {
+func RestoreWorkingDirectoryFiles(treeHash string, parentPath string, repo *core.Repository) error {
+	obj, err := repo.LoadObject(treeHash)
+	if err != nil {
+		return err
+	}
+	tree := obj.(*core.Tree)
+
+	for _, entry := range tree.Entries {
+		fullPath := filepath.Join(repo.WorkTree, parentPath, entry.Name)
+		if entry.Mode == "100644" {
+			obj, err := repo.LoadObject(entry.Hash)
+			if err != nil {
+				fmt.Println(err)
+			}
+			blob := obj.(*core.Blob)
+			if err := os.WriteFile(fullPath, blob.Content, 0644); err != nil {
+				fmt.Println(err)
+			}
+
+		} else if entry.Mode == "040000" {
+			if err := os.Mkdir(fullPath, 0755); err != nil {
+				fmt.Println(err)
+			}
+			if err := RestoreWorkingDirectoryFiles(entry.Hash, filepath.Join(parentPath, entry.Name), repo); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
