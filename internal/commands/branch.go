@@ -11,8 +11,6 @@ import (
 )
 
 func RunBranch(branch string, shouldDelete, listOnly bool, repo *core.Repository) error {
-	fmt.Printf("branch: %s, shouldDelete %v, listOnly: %v \n", branch, shouldDelete, listOnly)
-
 	branches := []string{}
 	if err := filepath.Walk(repo.RefsDir, func(path string, info fs.FileInfo, err error) error {
 		if info.IsDir() {
@@ -46,11 +44,14 @@ func RunBranch(branch string, shouldDelete, listOnly bool, repo *core.Repository
 		if !slices.Contains(branches, branch) {
 			return fmt.Errorf("error: branch %s not found", branch)
 		}
-
+		if branch == current {
+			return fmt.Errorf("cannot delete branch %s used by worktree at %s", branch, repo.WorkTree)
+		}
 		if err := os.Remove(filepath.Join(repo.RefsDir, branch)); err != nil {
 			return err
 		}
 
+		fmt.Printf("deleted branch %s.", branch)
 		return nil
 	}
 
