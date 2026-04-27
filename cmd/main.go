@@ -108,18 +108,30 @@ func main() {
 		}
 
 		shouldDelete := false
-		if len(args) == 2 {
-			if args[0] != "-d" {
+		branch := ""
+		listOnly := false
+		if len(args) == 0 {
+			listOnly = true
+		} else if len(args) == 1 {
+			if args[0] == "-d" {
 				fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
 				os.Exit(1)
-			} else {
-				shouldDelete = true
 			}
+			branch = args[0]
+		} else {
+			if len(args) == 2 {
+				if args[0] != "-d" {
+					fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
+					os.Exit(1)
+				} else {
+					shouldDelete = true
+				}
+				branch = args[len(args)-1]
+			}
+
 		}
 
-		branch := args[len(args)-1]
-
-		if err := commands.RunBranch(branch, shouldDelete, repo); err != nil {
+		if err := commands.RunBranch(branch, shouldDelete, listOnly, repo); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
