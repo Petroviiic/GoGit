@@ -101,6 +101,28 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "branch":
+		if len(args) > 2 {
+			fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
+			os.Exit(1)
+		}
+
+		shouldDelete := false
+		if len(args) == 2 {
+			if args[0] != "-d" {
+				fmt.Fprintln(os.Stderr, "Error: Parameters malformed")
+				os.Exit(1)
+			} else {
+				shouldDelete = true
+			}
+		}
+
+		branch := args[len(args)-1]
+
+		if err := commands.RunBranch(branch, shouldDelete, repo); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		os.Exit(1)
