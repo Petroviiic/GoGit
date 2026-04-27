@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 
@@ -25,9 +26,10 @@ func RunBranch(branch string, shouldDelete, listOnly bool, repo *core.Repository
 		return err
 	}
 
+	current := repo.GetCurrentBranch()
+
 	//<no_param>   	-lists all the branches
 	if listOnly {
-		current := repo.GetCurrentBranch()
 		fmt.Printf("* %s\n", current)
 
 		for _, branch := range branches {
@@ -45,13 +47,26 @@ func RunBranch(branch string, shouldDelete, listOnly bool, repo *core.Repository
 			return fmt.Errorf("error: branch %s not found", branch)
 		}
 
+		if err := os.Remove(filepath.Join(repo.RefsDir, branch)); err != nil {
+			return err
+		}
+
 		return nil
 	}
 
 	//<branch_name>			-creates a new branch
 	if slices.Contains(branches, branch) {
-		return fmt.Errorf("fatal: a branch named %s already exists", branch)
+		return fmt.Errorf("a branch named %s already exists", branch)
 	}
-	//
+
+	lastCommit := repo.GetBranchCommit(current)
+	if lastCommit == "" {
+		return fmt.Errorf("no commits yet, cannot create a branch")
+	}
+
+	if err := repo.SetBranchCommit(branch, lastCommit); err != nil { //if its brand new, it should point to its parent last commit
+		return err
+	}
+	fmt.Printf("created new branch %s", branch)
 	return nil
 }
