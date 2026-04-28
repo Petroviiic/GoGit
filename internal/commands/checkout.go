@@ -42,8 +42,6 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	fmt.Println(lastBranchFiles)
-
 	branchFile := filepath.Join(repo.RefsDir, branch)
 	if _, err := os.Stat(branchFile); errors.Is(err, os.ErrNotExist) { //branch doesnt exist
 		if shouldCreate {
@@ -82,7 +80,6 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 	if err := repo.SaveIndex(map[string]string{}); err != nil {
 		return err
 	}
-	fmt.Println(lastBranch, lastCommit)
 
 	fmt.Printf("switched to branch %s", branch)
 	return nil
@@ -119,7 +116,7 @@ func RestoreWorkingDirectoryFiles(treeHash string, parentPath string, repo *core
 
 		} else if entry.Mode == "040000" {
 			if err := os.Mkdir(fullPath, 0755); err != nil {
-				fmt.Println(err)
+				//fmt.Println(err)
 			}
 			if err := RestoreWorkingDirectoryFiles(entry.Hash, filepath.Join(parentPath, entry.Name), repo); err != nil {
 				fmt.Println(err)
