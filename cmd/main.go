@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/Petroviiic/GoGit/internal/commands"
 	"github.com/Petroviiic/GoGit/internal/core"
@@ -132,6 +133,31 @@ func main() {
 		}
 
 		if err := commands.RunBranch(branch, shouldDelete, listOnly, repo); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	case "log":
+		if len(args) > 1 {
+			fmt.Fprintf(os.Stderr, "Error: ambiguous argument %s: unknown revision or path not in the working tree.", args[0])
+			os.Exit(1)
+		}
+
+		limit := 10
+		if len(args) == 1 {
+			if args[0][0] != byte('-') {
+				fmt.Fprintf(os.Stderr, "Error: ambiguous argument %s: unknown revision or path not in the working tree.", args[0])
+				os.Exit(1)
+			}
+
+			limitStr := args[0][1:]
+			limit, err = strconv.Atoi(limitStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: unrecognized argument: -%s ", limitStr)
+				os.Exit(1)
+			}
+		}
+
+		if err := commands.RunLog(limit, repo); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
