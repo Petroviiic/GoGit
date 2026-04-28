@@ -46,7 +46,7 @@ func Deserialize(data []byte) (GitObject, error) {
 }
 
 func ParseTree(content []byte) (*Tree, error) {
-	fmt.Println("tree content: ", string(content))
+	//fmt.Println("tree content: ", string(content))
 	entries := []TreeEntry{}
 
 	err := json.Unmarshal(content, &entries)
@@ -58,7 +58,7 @@ func ParseTree(content []byte) (*Tree, error) {
 }
 
 func ParseCommit(content []byte) (*Commit, error) {
-	fmt.Println("commit content: ", string(content))
+	//fmt.Println("commit content: ", string(content))
 
 	lines := bytes.Split(content, []byte("\n"))
 
