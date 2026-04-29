@@ -7,6 +7,7 @@ import (
 )
 
 func RunLog(limit int, repo *core.Repository) error {
+	currentBranch := repo.GetCurrentBranch()
 	latestCommit := repo.GetBranchCommit(currentBranch)
 
 	if latestCommit == "" {
