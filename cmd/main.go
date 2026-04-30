@@ -161,6 +161,15 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "status":
+		if len(args) > 0 {
+			fmt.Fprintln(os.Stderr, "Error: Too many arguments")
+			os.Exit(1)
+		}
+		if err := commands.RunStatus(repo); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		os.Exit(1)
