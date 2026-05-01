@@ -1,7 +1,6 @@
 package core
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -76,34 +75,6 @@ func (r *Repository) Init() error {
 	if err := os.WriteFile(indexPath, []byte("{}"), 0644); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (r *Repository) LoadIndex() (map[string]string, error) {
-	indexRaw, err := os.ReadFile(r.IndexPath)
-	if err != nil {
-		return nil, err
-	}
-	//reading index
-	var index map[string]string
-	err = json.Unmarshal(indexRaw, &index)
-	if err != nil {
-		return nil, err
-	}
-
-	return index, err
-}
-
-func (r *Repository) SaveIndex(index map[string]string) error {
-	newIndex, err := json.MarshalIndent(index, "", "  ")
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(r.IndexPath, newIndex, 0644)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
