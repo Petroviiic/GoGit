@@ -36,7 +36,7 @@ func addPath(path string, repo *core.Repository) error {
 	if fileInfo.IsDir() {
 		err = addDirectory(path, repo, index)
 	} else {
-		err = addFile(path, repo, index)
+		err = addFile(path, repo, index, fileInfo.ModTime().Unix())
 	}
 
 	if err != nil {
@@ -51,7 +51,7 @@ func addPath(path string, repo *core.Repository) error {
 	return nil
 }
 
-func addDirectory(path string, repo *core.Repository, index map[string]string) error {
+func addDirectory(path string, repo *core.Repository, index map[string]core.IndexEntry) error {
 	var files []string
 	_ = filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
@@ -65,7 +65,17 @@ func addDirectory(path string, repo *core.Repository, index map[string]string) e
 		if slices.Contains(strings.Split(filepath.ToSlash(file), "/"), ".gogit") {
 			continue
 		}
-		if err := addFile(file, repo, index); err != nil {
+
+		fullPath := filepath.Join(repo.WorkTree, file)
+		fileInfo, err := os.Stat(fullPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("Path %s does not exist", fullPath)
+			}
+			return err
+		}
+
+		if err := addFile(file, repo, index, fileInfo.ModTime().Unix()); err != nil {
 			return err
 		}
 		addedCount++
@@ -75,7 +85,7 @@ func addDirectory(path string, repo *core.Repository, index map[string]string) e
 	return nil
 }
 
-func addFile(path string, repo *core.Repository, index map[string]string) error {
+func addFile(path string, repo *core.Repository, index map[string]core.IndexEntry, mtime int64) error {
 	//reading the file
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -96,7 +106,10 @@ func addFile(path string, repo *core.Repository, index map[string]string) error 
 	// if err != nil {
 	// 	return err
 	// }
-	index[filepath.ToSlash(path)] = blob_hash
+	index[filepath.ToSlash(path)] = core.IndexEntry{
+		Hash:  blob_hash,
+		MTime: mtime,
+	}
 
 	return nil
 }
