@@ -77,9 +77,9 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	if err := repo.SaveIndex(map[string]string{}); err != nil {
-		return err
-	}
+	// if err := repo.SaveIndex(map[string]string{}); err != nil {
+	// 	return err
+	// }
 
 	fmt.Printf("switched to branch %s", branch)
 	return nil
