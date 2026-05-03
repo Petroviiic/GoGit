@@ -48,10 +48,13 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 			if lastCommit == "" {
 				return fmt.Errorf("no commits yet, cannot create a branch")
 			} else {
-				if err := repo.SetBranchCommit(branch, lastCommit); err != nil { //if its brand new, it should point to its parent last commit
+				if err := repo.SetBranchCommit(branch, lastCommit); err != nil { //if it's brand new, it should point to its parent last commit
 					return err
 				}
 				fmt.Printf("created new branch %s", branch)
+
+				//myb return here to skip deleting and recreating the same files
+				//just add log from the end of this func
 			}
 		} else {
 			return fmt.Errorf("branch %s not found\nuse checkout -b %s to create and switch to a new branch", branch, branch)
@@ -104,7 +107,8 @@ func RestoreWorkingDirectoryFiles(treeHash string, parentPath string, repo *core
 
 	for _, entry := range tree.Entries {
 		fullPath := filepath.Join(repo.WorkTree, parentPath, entry.Name)
-		if entry.Mode == "100644" {
+		switch entry.Mode {
+		case "100644":
 			obj, err := repo.LoadObject(entry.Hash)
 			if err != nil {
 				fmt.Println(err)
@@ -114,7 +118,7 @@ func RestoreWorkingDirectoryFiles(treeHash string, parentPath string, repo *core
 				fmt.Println(err)
 			}
 
-		} else if entry.Mode == "040000" {
+		case "040000":
 			if err := os.Mkdir(fullPath, 0755); err != nil {
 				//fmt.Println(err)
 			}
