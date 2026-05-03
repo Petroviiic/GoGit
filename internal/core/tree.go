@@ -47,10 +47,10 @@ func NewHierarchyNode() *HierarchyNode {
 	}
 }
 
-func CreateFolderHierarchy(index map[string]string) *HierarchyNode {
+func CreateFolderHierarchy(index map[string]IndexEntry) *HierarchyNode {
 	root := NewHierarchyNode()
 
-	for path, hash := range index {
+	for path, entry := range index {
 		parts := strings.Split(filepath.ToSlash(path), "/")
 
 		currentNode := root
@@ -63,7 +63,7 @@ func CreateFolderHierarchy(index map[string]string) *HierarchyNode {
 				node.IsFile = isFile
 
 				if isFile {
-					node.Hash = hash
+					node.Hash = entry.Hash
 				}
 
 				currentNode.Children[part] = node
