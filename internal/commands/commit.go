@@ -20,6 +20,7 @@ func RunCommit(repo *core.Repository, message, author string) error {
 		return nil
 	}
 	branchCommit := repo.GetBranchCommit(currentBranch)
+
 	parentHashes := []string{branchCommit}
 
 	hierarchyRoot := core.CreateFolderHierarchy(index)
@@ -29,6 +30,7 @@ func RunCommit(repo *core.Repository, message, author string) error {
 	if err != nil {
 		return err
 	}
+
 	if len(parentHashes) > 0 {
 		for _, hash := range parentHashes {
 			if hash == "" {
@@ -66,10 +68,10 @@ func RunCommit(repo *core.Repository, message, author string) error {
 		return err
 	}
 
-	err = repo.SaveIndex(make(map[string]string))
-	if err != nil {
-		return err
-	}
+	// err = repo.SaveIndex(make(map[string]string))
+	// if err != nil {
+	// 	return err
+	// }
 
 	fmt.Printf("Created commit %s on branch %s", commitHash, currentBranch)
 	return nil
