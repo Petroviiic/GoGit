@@ -156,7 +156,7 @@ func GetIndexFromTreeHash(hash string, repo *Repository, parentPath string, resu
 	for _, entry := range tree.Entries {
 		path := filepath.Join(parentPath, entry.Name)
 		if entry.Mode == "100644" {
-			result[path] = entry.Hash
+			result[filepath.ToSlash(path)] = entry.Hash
 		} else {
 			if err := GetIndexFromTreeHash(entry.Hash, repo, path, result); err != nil {
 				return err
