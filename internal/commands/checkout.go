@@ -22,23 +22,26 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	if len(index) > 0 {
-		return fmt.Errorf("staging area is not empty. commit changes before checkout")
-	}
+	// if len(index) > 0 {
+	// 	return fmt.Errorf("staging area is not empty. commit changes before checkout")
+	// }
+
+	//Treba da cekira da li ima staged promjena, ako ima onda ne moze da se commita
 
 	lastCommit := repo.GetBranchCommit(lastBranch)
 
 	if lastCommit == "" {
 		return fmt.Errorf("no commits yet, cannot create a branch")
 	}
+
 	commitObj, err := repo.LoadObject(lastCommit)
 	if err != nil {
 		return err
 	}
 
-	lastBranchFiles := []string{}
+	lastBranchFilesMap := map[string]core.IndexEntry{}
 
-	if err := core.GetFilesFromTreeHash(commitObj.(*core.Commit).TreeHash, repo, "", &lastBranchFiles); err != nil {
+	if err := core.GetFilesFromTreeHash(commitObj.(*core.Commit).TreeHash, repo, "", lastBranchFilesMap); err != nil {
 		return err
 	}
 
@@ -65,14 +68,30 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	if err := RemoveOldFiles(lastBranchFiles, repo); err != nil {
+	newBranchCommitHash := repo.GetBranchCommit(branch)
+	newBranchCommit, err := repo.LoadObject(newBranchCommitHash)
+	if err != nil {
 		return err
 	}
 
-	newBranchCommitHash := repo.GetBranchCommit(branch)
-	newBranchCommit, err := repo.LoadObject(newBranchCommitHash)
+	newBranchFilesMap := map[string]core.IndexEntry{}
 
-	if err != nil {
+	if err := core.GetFilesFromTreeHash(newBranchCommit.(*core.Commit).TreeHash, repo, "", newBranchFilesMap); err != nil {
+		return err
+	}
+
+	filesToRemove := []string{}
+	for path, entry := range index {
+		if val, ok := newBranchFilesMap[path]; ok {
+			if entry.Hash != val.Hash {
+				filesToRemove = append(filesToRemove, path)
+			}
+		} else {
+			filesToRemove = append(filesToRemove, path)
+		}
+	}
+
+	if err := RemoveOldFiles(filesToRemove, repo); err != nil {
 		return err
 	}
 
@@ -80,7 +99,12 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	// if err := repo.SaveIndex(map[string]string{}); err != nil {
+	//save index with path:hash, mtime; where
+	// 		path is core.GetFilesFromTreeHash(newBranchCommit.(*core.Commit).TreeHash, repo, "", &newBranchIndex)
+	//		getfilesfromtreehash should be modified to access whole index
+	//		mtime is modification time for each file in new index, os system call
+
+	// if err := repo.SaveIndex(newBranchIndex); err != nil {
 	// 	return err
 	// }
 
