@@ -170,6 +170,16 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "merge":
+		if len(args) != 1 {
+			fmt.Fprintln(os.Stderr, "Error: Arguments malformed; use git merge <branch_to_merge>")
+			os.Exit(1)
+		}
+		mergeWith := args[0]
+		if err := commands.RunMerge(repo, mergeWith); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		os.Exit(1)
