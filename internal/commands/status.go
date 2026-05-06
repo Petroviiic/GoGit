@@ -42,29 +42,32 @@ func RunStatus(repo *core.Repository) error {
 	}); err != nil {
 		return err
 	}
-	fmt.Println("\nworking directory files", workingDirFiles, len(workingDirFiles))
+	//fmt.Println("\nworking directory files", workingDirFiles, len(workingDirFiles))
 
 	latestCommit := repo.GetBranchCommit(currentBranch)
 	lastCommitFiles := make(map[string]string)
 
-	obj, err := repo.LoadObject(latestCommit)
-	if err != nil {
-		return err
-	}
-
-	commit := obj.(*core.Commit)
-	if commit.TreeHash != "" {
-		if err := core.GetIndexFromTreeHash(commit.TreeHash, repo, ".", lastCommitFiles); err != nil {
+	if latestCommit != "" {
+		obj, err := repo.LoadObject(latestCommit)
+		if err != nil {
 			return err
 		}
+
+		commit := obj.(*core.Commit)
+		if commit.TreeHash != "" {
+			if err := core.GetIndexFromTreeHash(commit.TreeHash, repo, ".", lastCommitFiles); err != nil {
+				return err
+			}
+		}
 	}
-	fmt.Println("\nlast commit files", lastCommitFiles, len(lastCommitFiles))
+
+	//fmt.Println("\nlast commit files", lastCommitFiles, len(lastCommitFiles))
 
 	index, err := repo.LoadIndex()
 	if err != nil {
 		return err
 	}
-	fmt.Println("\nindex", index)
+	//fmt.Println("\nindex", index)
 
 	//UNTRACKED
 	untracked := []string{} //in working dir and not in index
