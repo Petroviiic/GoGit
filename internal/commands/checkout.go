@@ -158,34 +158,34 @@ func RestoreWorkingDirectoryFiles(newBranchIndex, lastIndex map[string]core.Inde
 	return nil
 }
 
-func RestoreWorkingDirectoryFilesv2(treeHash string, parentPath string, repo *core.Repository) error {
-	obj, err := repo.LoadObject(treeHash)
-	if err != nil {
-		return err
-	}
-	tree := obj.(*core.Tree)
+// func RestoreWorkingDirectoryFilesv2(treeHash string, parentPath string, repo *core.Repository) error {
+// 	obj, err := repo.LoadObject(treeHash)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	tree := obj.(*core.Tree)
 
-	for _, entry := range tree.Entries {
-		fullPath := filepath.Join(repo.WorkTree, parentPath, entry.Name)
-		switch entry.Mode {
-		case "100644":
-			obj, err := repo.LoadObject(entry.Hash)
-			if err != nil {
-				fmt.Println(err)
-			}
-			blob := obj.(*core.Blob)
-			if err := os.WriteFile(fullPath, blob.Content, 0644); err != nil {
-				fmt.Println(err)
-			}
+// 	for _, entry := range tree.Entries {
+// 		fullPath := filepath.Join(repo.WorkTree, parentPath, entry.Name)
+// 		switch entry.Mode {
+// 		case "100644":
+// 			obj, err := repo.LoadObject(entry.Hash)
+// 			if err != nil {
+// 				fmt.Println(err)
+// 			}
+// 			blob := obj.(*core.Blob)
+// 			if err := os.WriteFile(fullPath, blob.Content, 0644); err != nil {
+// 				fmt.Println(err)
+// 			}
 
-		case "040000":
-			if err := os.Mkdir(fullPath, 0755); err != nil {
-				//fmt.Println(err)
-			}
-			if err := RestoreWorkingDirectoryFilesv2(entry.Hash, filepath.Join(parentPath, entry.Name), repo); err != nil {
-				fmt.Println(err)
-			}
-		}
-	}
-	return nil
-}
+// 		case "040000":
+// 			if err := os.Mkdir(fullPath, 0755); err != nil {
+// 				//fmt.Println(err)
+// 			}
+// 			if err := RestoreWorkingDirectoryFilesv2(entry.Hash, filepath.Join(parentPath, entry.Name), repo); err != nil {
+// 				fmt.Println(err)
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
