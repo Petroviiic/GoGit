@@ -56,8 +56,11 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 				}
 				fmt.Printf("created new branch %s", branch)
 
-				//myb return here to skip deleting and recreating the same files
-				//just add log from the end of this func
+				if err := repo.SetCurrentBranch(branch); err != nil {
+					return err
+				}
+				fmt.Printf("switched to branch %s", branch)
+				return nil
 			}
 		} else {
 			return fmt.Errorf("branch %s not found\nuse checkout -b %s to create and switch to a new branch", branch, branch)
@@ -95,18 +98,14 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	if err := RestoreWorkingDirectoryFiles(newBranchCommit.(*core.Commit).TreeHash, "", repo); err != nil {
+	// if err := RestoreWorkingDirectoryFiles(newBranchCommit.(*core.Commit).TreeHash, "", repo); err != nil {
+	if err := RestoreWorkingDirectoryFiles(newBranchFilesMap, lastBranchFilesMap, "", repo); err != nil {
 		return err
 	}
 
-	//save index with path:hash, mtime; where
-	// 		path is core.GetFilesFromTreeHash(newBranchCommit.(*core.Commit).TreeHash, repo, "", &newBranchIndex)
-	//		getfilesfromtreehash should be modified to access whole index
-	//		mtime is modification time for each file in new index, os system call
-
-	// if err := repo.SaveIndex(newBranchIndex); err != nil {
-	// 	return err
-	// }
+	if err := repo.SaveIndex(newBranchFilesMap); err != nil {
+		return err
+	}
 
 	fmt.Printf("switched to branch %s", branch)
 	return nil
@@ -118,11 +117,48 @@ func RemoveOldFiles(filesToRemove []string, repo *core.Repository) error {
 		if err := os.Remove(fullPath); err != nil {
 			fmt.Println(err)
 		}
+		if err := os.Remove(filepath.Dir(fullPath)); err != nil {
+			continue
+		}
 	}
 
 	return nil
 }
-func RestoreWorkingDirectoryFiles(treeHash string, parentPath string, repo *core.Repository) error {
+
+func RestoreWorkingDirectoryFiles(newBranchIndex, lastIndex map[string]core.IndexEntry, parentPath string, repo *core.Repository) error {
+	for path, entry := range newBranchIndex {
+		old, ok := lastIndex[path]
+		if !ok || entry.Hash != old.Hash {
+			fullPath := filepath.Join(repo.WorkTree, path)
+			obj, err := repo.LoadObject(entry.Hash)
+			if err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
+				fmt.Println(err)
+			}
+
+			blob := obj.(*core.Blob)
+
+			_ = os.MkdirAll(filepath.Dir(fullPath), 0755)
+
+			if err := os.WriteFile(fullPath, blob.Content, 0644); err != nil {
+				fmt.Println(err)
+			}
+
+			info, _ := os.Stat(path)
+			entry.MTime = info.ModTime().Unix()
+			newBranchIndex[path] = entry
+		} else {
+			entry.MTime = old.MTime
+			newBranchIndex[path] = entry
+		}
+	}
+
+	return nil
+}
+
+func RestoreWorkingDirectoryFilesv2(treeHash string, parentPath string, repo *core.Repository) error {
 	obj, err := repo.LoadObject(treeHash)
 	if err != nil {
 		return err
@@ -146,7 +182,7 @@ func RestoreWorkingDirectoryFiles(treeHash string, parentPath string, repo *core
 			if err := os.Mkdir(fullPath, 0755); err != nil {
 				//fmt.Println(err)
 			}
-			if err := RestoreWorkingDirectoryFiles(entry.Hash, filepath.Join(parentPath, entry.Name), repo); err != nil {
+			if err := RestoreWorkingDirectoryFilesv2(entry.Hash, filepath.Join(parentPath, entry.Name), repo); err != nil {
 				fmt.Println(err)
 			}
 		}
