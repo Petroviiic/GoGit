@@ -8,22 +8,55 @@ import (
 
 func RunMerge(repo *core.Repository, theirsBranch string) error {
 	oursBranch := repo.GetCurrentBranch()
-	oursCommit := repo.GetBranchCommit(oursBranch)
-	if oursCommit == "" {
+	oursCommitHash := repo.GetBranchCommit(oursBranch)
+	if oursCommitHash == "" {
 		return fmt.Errorf("merge: no commits on branch %s", oursBranch)
 	}
 
-	theirsCommit := repo.GetBranchCommit(theirsBranch)
-	if theirsCommit == "" {
+	theirsCommitHash := repo.GetBranchCommit(theirsBranch)
+	if theirsCommitHash == "" {
 		return fmt.Errorf("merge: %s - not something we can merge", theirsBranch)
 	}
 
-	if oursCommit == theirsCommit {
+	if oursCommitHash == theirsCommitHash {
 		fmt.Println("Already up to date.")
 		return nil
 	}
 
-	// baseCommitHash := repo.GetMergeBase(oursCommitHash, theirsCommitHash)
+	baseCommitHash, err := repo.GetMergeBase(oursCommitHash, theirsCommitHash)
 
+	if err != nil {
+		return err
+	}
+	fmt.Println(baseCommitHash)
+	_ = baseCommitHash
+
+	//Fast-Forward
+	//ours behind theirs
+	//refs/heads/ourbranch.setbranchcommit(theirs)
+
+	//Three-Way-Merge
+	//take tree from ours and theirs latest commits
+	//take tree from base commit
+	//merge these 3 into one big map
+
+	//loop through each file; maybe add ok files to a list or dict
+	//	if unique in ours/theirs and not present in base => new, ok
+	//	if present in base and ours and file.hash(base) == file.hash(ours) and not present in theirs => deleted, ok/skip
+	//	if file.hash(base) == file.hash(ours) && file.hash(base) != file.hash(theirs); changed only in ours; ok
+	//	if file.hash(base) == file.hash(theirs) && file.hash(base) != file.hash(ours); changed only in theirs; ok
+
+	//	if file.hash(ours) == file.hash(theirs); ok
+	//		else
+	// 			if file.hash(base) != file.hash(ours) && file.hash(base) != file.hash(theirs); conflict
+
+	//	if !conflict;
+	// 		make merge commit;
+	//		recreate new directory,
+	// 		and tree and add ours and theirscommits as parents
+
+	// obj, err := repo.LoadObject("35ff57b34823f848b33bf6544828fb150b811663")
+	// theirsCommit := obj.(*core.Commit)
+	// fmt.Println(theirsCommit)
 	return nil
 }
