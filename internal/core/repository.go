@@ -119,6 +119,9 @@ func (r *Repository) GetBranchCommit(branch string) string {
 }
 
 func (repo *Repository) LoadObject(objectHash string) (GitObject, error) {
+	if objectHash == "" {
+		return nil, fmt.Errorf("couldnt load object; hash empty %s", objectHash)
+	}
 	objDir := filepath.Join(repo.ObjectsDir, objectHash[:2])
 
 	objFile := filepath.Join(objDir, objectHash[2:])
@@ -143,15 +146,6 @@ func (repo *Repository) SetBranchCommit(branch, hash string) error {
 }
 
 func (repo *Repository) GetMergeBase(oursCommitHash, theirsCommitHash string) (string, error) {
-	// obj1, err := repo.LoadObject(oursCommitHash)
-	// if err != nil {
-	// 	return "", err
-	// }
-	// if obj1 == nil {
-	// 	return "", fmt.Errorf("commit with hash %s doesnt exist", oursCommitHash)
-	// }
-	// oursCommit := obj1.(*Commit)
-
 	oursCommitHistory := map[string]bool{}
 
 	queue := []string{oursCommitHash}
@@ -167,20 +161,41 @@ func (repo *Repository) GetMergeBase(oursCommitHash, theirsCommitHash string) (s
 		oursCommit := obj.(*Commit)
 
 		for _, parent := range oursCommit.ParentHashes {
-			if !oursCommitHistory[parent] {
+			if !oursCommitHistory[parent] && parent != "" {
 				queue = append(queue, parent)
 			}
 		}
 	}
-	fmt.Println(oursCommitHistory)
-	// obj2, err := repo.LoadObject(theirsCommitHash)
-	// if err!=nil{
-	// 	return "", err
-	// }
-	// if obj2 == nil{
-	// 	return "", fmt.Errorf("commit with hash %s doesnt exist", theirsCommitHash)
-	// }
-	// theirsCommit := obj2.(*Commit)
 
-	return "", nil
+	theirsCommitHistory := map[string]bool{}
+
+	queue = []string{theirsCommitHash}
+
+	result := ""
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		theirsCommitHistory[current] = true
+
+		if oursCommitHistory[current] {
+			result = current
+			break
+		}
+		obj, err := repo.LoadObject(current)
+		if err != nil || obj == nil {
+			break
+		}
+		theirsCommit := obj.(*Commit)
+
+		for _, parent := range theirsCommit.ParentHashes {
+			if !theirsCommitHistory[parent] && parent != "" {
+				queue = append(queue, parent)
+			}
+		}
+	}
+
+	if result == "" {
+		return "", fmt.Errorf("something went wrong, no merge base found")
+	}
+	return result, nil
 }
