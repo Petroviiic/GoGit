@@ -141,3 +141,46 @@ func (repo *Repository) SetBranchCommit(branch, hash string) error {
 	}
 	return nil
 }
+
+func (repo *Repository) GetMergeBase(oursCommitHash, theirsCommitHash string) (string, error) {
+	// obj1, err := repo.LoadObject(oursCommitHash)
+	// if err != nil {
+	// 	return "", err
+	// }
+	// if obj1 == nil {
+	// 	return "", fmt.Errorf("commit with hash %s doesnt exist", oursCommitHash)
+	// }
+	// oursCommit := obj1.(*Commit)
+
+	oursCommitHistory := map[string]bool{}
+
+	queue := []string{oursCommitHash}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		oursCommitHistory[current] = true
+
+		obj, err := repo.LoadObject(current)
+		if err != nil || obj == nil {
+			break
+		}
+		oursCommit := obj.(*Commit)
+
+		for _, parent := range oursCommit.ParentHashes {
+			if !oursCommitHistory[parent] {
+				queue = append(queue, parent)
+			}
+		}
+	}
+	fmt.Println(oursCommitHistory)
+	// obj2, err := repo.LoadObject(theirsCommitHash)
+	// if err!=nil{
+	// 	return "", err
+	// }
+	// if obj2 == nil{
+	// 	return "", fmt.Errorf("commit with hash %s doesnt exist", theirsCommitHash)
+	// }
+	// theirsCommit := obj2.(*Commit)
+
+	return "", nil
+}
