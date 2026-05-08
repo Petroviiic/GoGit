@@ -2,6 +2,8 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/Petroviiic/GoGit/internal/core"
 )
@@ -29,12 +31,51 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		return err
 	}
 	fmt.Println(baseCommitHash)
-	_ = baseCommitHash
+
+	obj1, err := repo.LoadObject(oursCommitHash)
+	if err != nil {
+		return err
+	}
+	oursCommit := obj1.(*core.Commit)
+
+	obj2, err := repo.LoadObject(theirsCommitHash)
+	if err != nil {
+		return err
+	}
+	theirsCommit := obj2.(*core.Commit)
 
 	//Fast-Forward
 	//ours behind theirs
 	//refs/heads/ourbranch.setbranchcommit(theirs)
+	if oursCommitHash == baseCommitHash {
+		if err := repo.SetBranchCommit(oursBranch, theirsCommitHash); err != nil {
+			return err
+		}
+	}
 
+	oursFiles := map[string]core.IndexEntry{}
+	if err := core.GetFilesFromTreeHash(oursCommit.TreeHash, repo, ".", oursFiles); err != nil {
+		return err
+	}
+
+	theirsFiles := map[string]core.IndexEntry{}
+	if err := core.GetFilesFromTreeHash(theirsCommit.TreeHash, repo, ".", theirsFiles); err != nil {
+		return err
+	}
+
+	for path, entry := range theirsFiles {
+		ours, ok := oursFiles[path]
+		if !ok || (ok && ours.Hash != entry.Hash) {
+			obj, _ := repo.LoadObject(entry.Hash)
+
+			fullPath := filepath.Join(repo.WorkTree, path)
+			os.MkdirAll(filepath.Dir(fullPath), 0755)
+			_ = os.WriteFile(fullPath, obj.GetContent(), 0644)
+		}
+	}
+	if err := repo.SaveIndex(theirsFiles); err != nil {
+		return err
+	}
 	//Three-Way-Merge
 	//take tree from ours and theirs latest commits
 	//take tree from base commit
@@ -59,4 +100,10 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 	// theirsCommit := obj.(*core.Commit)
 	// fmt.Println(theirsCommit)
 	return nil
+}
+
+func SyncWorkingDirectory(oursFiles, theirsFiles, allFiles map[string]string) {
+	// for path, hash := range allFiles{
+
+	// }
 }
