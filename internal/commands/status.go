@@ -45,7 +45,7 @@ func RunStatus(repo *core.Repository) error {
 	//fmt.Println("\nworking directory files", workingDirFiles, len(workingDirFiles))
 
 	latestCommit := repo.GetBranchCommit(currentBranch)
-	lastCommitFiles := make(map[string]string)
+	lastCommitFiles := make(map[string]core.IndexEntry)
 
 	if latestCommit != "" {
 		obj, err := repo.LoadObject(latestCommit)
@@ -120,11 +120,11 @@ func RunStatus(repo *core.Repository) error {
 	stagedDeleted := []string{}
 
 	for path, indexEntry := range index {
-		hash, ok := lastCommitFiles[path]
+		entry, ok := lastCommitFiles[path]
 		if !ok {
 			stagedNew = append(stagedNew, path)
 		} else {
-			if indexEntry.Hash != hash {
+			if indexEntry.Hash != entry.Hash {
 				stagedModifed = append(stagedModifed, path)
 			}
 		}
