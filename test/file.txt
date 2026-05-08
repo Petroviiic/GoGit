@@ -1,1 +1,4 @@
 caos svima
+
+
+jos neko malo testiranje za merge fast forward
