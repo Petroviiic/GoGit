@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -148,7 +149,7 @@ func GetFilesFromTreeHash(hash string, repo *Repository, parentPath string, resu
 	return nil
 }
 
-func GetIndexFromTreeHash(hash string, repo *Repository, parentPath string, result map[string]string) error {
+func GetIndexFromTreeHash(hash string, repo *Repository, parentPath string, result map[string]IndexEntry) error {
 	obj, err := repo.LoadObject(hash)
 	if err != nil {
 		return err
@@ -158,7 +159,12 @@ func GetIndexFromTreeHash(hash string, repo *Repository, parentPath string, resu
 	for _, entry := range tree.Entries {
 		path := filepath.Join(parentPath, entry.Name)
 		if entry.Mode == "100644" {
-			result[filepath.ToSlash(path)] = entry.Hash
+			info, _ := os.Stat(path)
+
+			result[filepath.ToSlash(path)] = IndexEntry{
+				Hash:  entry.Hash,
+				MTime: info.ModTime().Unix(),
+			}
 		} else {
 			if err := GetIndexFromTreeHash(entry.Hash, repo, path, result); err != nil {
 				return err
