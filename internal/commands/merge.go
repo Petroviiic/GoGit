@@ -2,8 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/Petroviiic/GoGit/internal/core"
 )
@@ -44,6 +42,16 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 	}
 	theirsCommit := obj2.(*core.Commit)
 
+	oursFiles := map[string]core.IndexEntry{}
+	if err := core.GetFilesFromTreeHash(oursCommit.TreeHash, repo, "", oursFiles); err != nil {
+		return err
+	}
+
+	theirsFiles := map[string]core.IndexEntry{}
+	if err := core.GetFilesFromTreeHash(theirsCommit.TreeHash, repo, "", theirsFiles); err != nil {
+		return err
+	}
+
 	//Fast-Forward
 	//ours behind theirs
 	//refs/heads/ourbranch.setbranchcommit(theirs)
@@ -51,31 +59,31 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		if err := repo.SetBranchCommit(oursBranch, theirsCommitHash); err != nil {
 			return err
 		}
-	}
 
-	oursFiles := map[string]core.IndexEntry{}
-	if err := core.GetFilesFromTreeHash(oursCommit.TreeHash, repo, ".", oursFiles); err != nil {
-		return err
-	}
+		filesToRemove := []string{}
+		for path, entry := range oursFiles {
+			if val, ok := theirsFiles[path]; ok {
+				if entry.Hash != val.Hash {
+					filesToRemove = append(filesToRemove, path)
+				}
+			} else {
+				filesToRemove = append(filesToRemove, path)
+			}
+		}
 
-	theirsFiles := map[string]core.IndexEntry{}
-	if err := core.GetFilesFromTreeHash(theirsCommit.TreeHash, repo, ".", theirsFiles); err != nil {
-		return err
-	}
+		if err := RemoveOldFiles(filesToRemove, repo); err != nil {
+			return err
+		}
 
-	for path, entry := range theirsFiles {
-		ours, ok := oursFiles[path]
-		if !ok || (ok && ours.Hash != entry.Hash) {
-			obj, _ := repo.LoadObject(entry.Hash)
+		if err := RestoreWorkingDirectoryFiles(theirsFiles, oursFiles, "", repo); err != nil {
+			return err
+		}
 
-			fullPath := filepath.Join(repo.WorkTree, path)
-			os.MkdirAll(filepath.Dir(fullPath), 0755)
-			_ = os.WriteFile(fullPath, obj.GetContent(), 0644)
+		if err := repo.SaveIndex(theirsFiles); err != nil {
+			return err
 		}
 	}
-	if err := repo.SaveIndex(theirsFiles); err != nil {
-		return err
-	}
+
 	//Three-Way-Merge
 	//take tree from ours and theirs latest commits
 	//take tree from base commit
