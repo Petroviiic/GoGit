@@ -45,6 +45,10 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
+	if !IsStagingClean(index, lastBranchFilesMap) {
+		return fmt.Errorf("staging area is not empty. commit changes before checkout")
+	}
+
 	branchFile := filepath.Join(repo.RefsDir, branch)
 	if _, err := os.Stat(branchFile); errors.Is(err, os.ErrNotExist) { //branch doesnt exist
 		if shouldCreate {
@@ -54,7 +58,7 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 				if err := repo.SetBranchCommit(branch, lastCommit); err != nil { //if it's brand new, it should point to its parent last commit
 					return err
 				}
-				fmt.Printf("created new branch %s", branch)
+				fmt.Printf("created new branch %s\n", branch)
 
 				if err := repo.SetCurrentBranch(branch); err != nil {
 					return err
@@ -98,7 +102,6 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	// if err := RestoreWorkingDirectoryFiles(newBranchCommit.(*core.Commit).TreeHash, "", repo); err != nil {
 	if err := RestoreWorkingDirectoryFiles(newBranchFilesMap, lastBranchFilesMap, "", repo); err != nil {
 		return err
 	}
@@ -109,6 +112,30 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 
 	fmt.Printf("switched to branch %s", branch)
 	return nil
+}
+
+func IsStagingClean(index, lastCommitFiles map[string]core.IndexEntry) bool {
+	//STAGED	index vs last commit 		//Changes to be committed
+	//	new (in index and not in the last commit)
+	//  modifed (present in index and last commit and hashes are different)
+	// 	deleted (present in the last commit and not in index)
+
+	for path, indexEntry := range index {
+		entry, ok := lastCommitFiles[path]
+		if !ok {
+			return false
+		}
+		if indexEntry.Hash != entry.Hash {
+			return false
+		}
+
+	}
+	for path := range lastCommitFiles {
+		if _, ok := index[path]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func RemoveOldFiles(filesToRemove []string, repo *core.Repository) error {
