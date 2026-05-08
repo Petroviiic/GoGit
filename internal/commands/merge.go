@@ -82,13 +82,87 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		if err := repo.SaveIndex(theirsFiles); err != nil {
 			return err
 		}
+
+		return nil
 	}
 
 	//Three-Way-Merge
 	//take tree from ours and theirs latest commits
 	//take tree from base commit
-	//merge these 3 into one big map
 
+	obj3, err := repo.LoadObject(baseCommitHash)
+	if err != nil {
+		return err
+	}
+	baseCommit := obj3.(*core.Commit)
+
+	baseFiles := map[string]core.IndexEntry{}
+	if err := core.GetFilesFromTreeHash(baseCommit.TreeHash, repo, "", baseFiles); err != nil {
+		return err
+	}
+
+	//merge these 3 into one big map
+	allPaths := make(map[string]bool)
+
+	for p := range baseFiles {
+		allPaths[p] = true
+	}
+	for p := range oursFiles {
+		allPaths[p] = true
+	}
+	for p := range theirsFiles {
+		allPaths[p] = true
+	}
+
+	mergedFiles := make(map[string]core.IndexEntry)
+	filesToRemove := []string{}
+
+	for path := range allPaths {
+		baseEntry, inBase := baseFiles[path]
+		oursEntry, inOurs := oursFiles[path]
+		theirsEntry, inTheirs := theirsFiles[path]
+
+		if (inOurs != inTheirs) && !inBase { //inOurs xor inTheirs
+			//new file
+			if inOurs {
+				mergedFiles[path] = oursEntry
+			} else if inTheirs {
+				mergedFiles[path] = theirsEntry
+			}
+			continue
+
+		}
+		if inBase && inOurs && !inTheirs && baseEntry.Hash == oursEntry.Hash {
+			//deleted in theirs
+			filesToRemove = append(filesToRemove, path)
+			continue
+		}
+		if inBase && !inOurs && inTheirs && baseEntry.Hash == theirsEntry.Hash {
+			//deleted in ours
+			mergedFiles[path] = theirsEntry
+			continue
+		}
+
+		if inBase && inOurs && inTheirs && baseEntry.Hash == oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
+			mergedFiles[path] = theirsEntry
+			continue
+
+		}
+		if inBase && inOurs && inTheirs && baseEntry.Hash != oursEntry.Hash && baseEntry.Hash == theirsEntry.Hash {
+			mergedFiles[path] = oursEntry
+			continue
+
+		}
+
+		if inBase && inOurs && inTheirs && oursEntry.Hash == theirsEntry.Hash {
+			mergedFiles[path] = oursEntry
+			continue
+		}
+
+		if baseEntry.Hash != oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
+			return fmt.Errorf("merge conflict at path %s \n", path)
+		}
+	}
 	//loop through each file; maybe add ok files to a list or dict
 	//	if unique in ours/theirs and not present in base => new, ok
 	//	if present in base and ours and file.hash(base) == file.hash(ours) and not present in theirs => deleted, ok/skip
