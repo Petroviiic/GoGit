@@ -1,3 +1,6 @@
 ovo je izmjena na mainu
 
 test za fast forward merge
+
+
+test modifikovanja jednog fajla za three way na test2
