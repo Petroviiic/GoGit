@@ -1,6 +1,4 @@
-ovo je izmjena na mainu
-
-test za fast forward merge
+modifikovao fajl u testu
 
 
-test modifikovanja jednog fajla za three way na test2
+mijenjam u main za 3way

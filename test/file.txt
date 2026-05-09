@@ -1,1 +1,5 @@
-caos svima
+caoos
+
+mijenjam u test za 3way
+
+izmjena u main za conflict
