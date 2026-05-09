@@ -2,7 +2,9 @@ package core
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -159,8 +161,10 @@ func GetIndexFromTreeHash(hash string, repo *Repository, parentPath string, resu
 	for _, entry := range tree.Entries {
 		path := filepath.Join(parentPath, entry.Name)
 		if entry.Mode == "100644" {
-			info, _ := os.Stat(path)
-
+			info, err := os.Stat(path)
+			if err != nil && errors.Is(err, fs.ErrNotExist) {
+				continue
+			}
 			result[filepath.ToSlash(path)] = IndexEntry{
 				Hash:  entry.Hash,
 				MTime: info.ModTime().Unix(),
