@@ -122,46 +122,51 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		oursEntry, inOurs := oursFiles[path]
 		theirsEntry, inTheirs := theirsFiles[path]
 
+		//new files
 		if (inOurs != inTheirs) && !inBase { //inOurs xor inTheirs
-			//new file
 			if inOurs {
 				mergedFiles[path] = oursEntry
 			} else if inTheirs {
 				mergedFiles[path] = theirsEntry
 			}
 			continue
-
-		}
-		if inBase && inOurs && !inTheirs && baseEntry.Hash == oursEntry.Hash {
-			//deleted in theirs
-			filesToRemove = append(filesToRemove, path)
-			continue
-		}
-		if inBase && !inOurs && inTheirs && baseEntry.Hash == theirsEntry.Hash {
-			//deleted in ours
-			mergedFiles[path] = theirsEntry
-			continue
 		}
 
-		if inBase && inOurs && inTheirs && baseEntry.Hash == oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
-			mergedFiles[path] = theirsEntry
-			continue
-
+		//deleting
+		if inBase {
+			if !inOurs && inTheirs && theirsEntry.Hash == baseEntry.Hash {
+				filesToRemove = append(filesToRemove, path)
+				continue
+			}
+			if inOurs && !inTheirs && oursEntry.Hash == baseEntry.Hash {
+				filesToRemove = append(filesToRemove, path)
+				continue
+			}
 		}
-		if inBase && inOurs && inTheirs && baseEntry.Hash != oursEntry.Hash && baseEntry.Hash == theirsEntry.Hash {
-			mergedFiles[path] = oursEntry
-			continue
 
+		//one side modified
+		if inBase && inOurs && inTheirs {
+			if baseEntry.Hash == oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
+				mergedFiles[path] = theirsEntry
+				continue
+			}
+
+			if baseEntry.Hash != oursEntry.Hash && baseEntry.Hash == theirsEntry.Hash {
+				mergedFiles[path] = oursEntry
+				continue
+			}
 		}
 
+		//nothing changed
 		if inBase && inOurs && inTheirs && oursEntry.Hash == theirsEntry.Hash {
 			mergedFiles[path] = oursEntry
 			continue
 		}
 
-		if baseEntry.Hash != oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
+		if inBase && baseEntry.Hash != oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
 			return fmt.Errorf("merge conflict at path %s \n", path)
 		}
+		return fmt.Errorf("merge conflict at path %s \n", path)
 	}
 	//loop through each file; maybe add ok files to a list or dict
 	//	if unique in ours/theirs and not present in base => new, ok
