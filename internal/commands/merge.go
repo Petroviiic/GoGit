@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Petroviiic/GoGit/internal/core"
 )
@@ -183,6 +184,44 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 	//		recreate new directory,
 	// 		and tree and add ours and theirscommits as parents
 
+	if err := RemoveOldFiles(filesToRemove, repo); err != nil {
+		return err
+	}
+	if err := RestoreWorkingDirectoryFiles(mergedFiles, oursFiles, "", repo); err != nil {
+		return err
+	}
+
+	hierarchyRoot := core.CreateFolderHierarchy(mergedFiles)
+
+	treeHash, err := core.CreateTreeStructure(hierarchyRoot, repo)
+
+	if err != nil {
+		return err
+	}
+
+	parentHashes := []string{oursCommitHash, theirsCommitHash}
+	mergeCommit := core.NewCommit(
+		"", //author and commiter could be extracted from global config file, which i dont have
+		"",
+		fmt.Sprintf("Merge branch '%s' into '%s'", theirsBranch, oursBranch),
+		treeHash,
+		parentHashes,
+		time.Now().UTC(),
+	)
+
+	commitHash, err := mergeCommit.StoreObject(repo)
+	if err != nil {
+		return err
+	}
+
+	err = repo.SetBranchCommit(oursBranch, commitHash)
+	if err != nil {
+		return err
+	}
+
+	if err := repo.SaveIndex(mergedFiles); err != nil {
+		return err
+	}
 	// obj, err := repo.LoadObject("35ff57b34823f848b33bf6544828fb150b811663")
 	// theirsCommit := obj.(*core.Commit)
 	// fmt.Println(theirsCommit)
