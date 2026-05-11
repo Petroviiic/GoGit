@@ -164,6 +164,9 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 			continue
 		}
 
+		//TODO : dodaj git diff, tj da prikaze sta je konkretno conflictovano
+		//TODO : obrisi komentare i procisti ovo
+
 		if inBase && baseEntry.Hash != oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
 			return fmt.Errorf("merge conflict at path %s \n", path)
 		}
