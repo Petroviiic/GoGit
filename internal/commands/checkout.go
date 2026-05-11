@@ -3,6 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -167,19 +168,25 @@ func RestoreWorkingDirectoryFiles(newBranchIndex, lastIndex map[string]core.Inde
 
 			blob := obj.(*core.Blob)
 
-			_ = os.MkdirAll(filepath.Dir(fullPath), 0755)
+			if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+				fmt.Println(err)
+			}
 
 			if err := os.WriteFile(fullPath, blob.Content, 0644); err != nil {
 				fmt.Println(err)
 			}
 
-			info, _ := os.Stat(path)
-			entry.MTime = info.ModTime().Unix()
-			newBranchIndex[path] = entry
-		} else {
-			entry.MTime = old.MTime
-			newBranchIndex[path] = entry
 		}
+		info, err := os.Stat(path) //error if deleted
+		if err != nil {
+			fmt.Println(err)
+			if errors.Is(err, fs.ErrNotExist) {
+				delete(newBranchIndex, path)
+			}
+			continue
+		}
+		entry.MTime = info.ModTime().Unix()
+		newBranchIndex[path] = entry
 	}
 
 	return nil
