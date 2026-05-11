@@ -52,16 +52,23 @@ func addPath(path string, repo *core.Repository) error {
 }
 
 func addDirectory(path string, repo *core.Repository, index map[string]core.IndexEntry) error {
-	var files []string
+	diskFiles := map[string]bool{}
+
 	_ = filepath.Walk(path, func(path string, info fs.FileInfo, err error) error {
 		if !info.IsDir() {
-			files = append(files, path)
+			diskFiles[path] = true
 		}
 		return err
 	})
 
+	for path := range index {
+		if _, ok := diskFiles[path]; !ok {
+			delete(index, path)
+		}
+	}
+
 	addedCount := 0
-	for _, file := range files {
+	for file := range diskFiles {
 		if slices.Contains(strings.Split(filepath.ToSlash(file), "/"), ".gogit") {
 			continue
 		}
