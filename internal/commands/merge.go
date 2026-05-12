@@ -29,7 +29,6 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(baseCommitHash)
 
 	obj1, err := repo.LoadObject(oursCommitHash)
 	if err != nil {
@@ -53,55 +52,95 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		return err
 	}
 
-	//Fast-Forward
-	//ours behind theirs
-	//refs/heads/ourbranch.setbranchcommit(theirs)
+	filesToRemove := []string{}
+	newHash := ""
+	newFiles := make(map[string]core.IndexEntry)
+
 	if oursCommitHash == baseCommitHash {
-		if err := repo.SetBranchCommit(oursBranch, theirsCommitHash); err != nil {
+		//Fast-Forward
+		//ours behind theirs
+		if err := fastForwardMerge(oursFiles, theirsFiles, &filesToRemove); err != nil {
+			return err
+		}
+		newHash = theirsCommitHash
+		newFiles = theirsFiles
+
+	} else {
+		//Three-Way-Merge
+		//take tree from ours and theirs latest commits
+		//take tree from base commit
+
+		obj3, err := repo.LoadObject(baseCommitHash)
+		if err != nil {
+			return err
+		}
+		baseCommit := obj3.(*core.Commit)
+
+		baseFiles := map[string]core.IndexEntry{}
+		if err := core.GetFilesFromTreeHash(baseCommit.TreeHash, repo, "", baseFiles); err != nil {
 			return err
 		}
 
-		filesToRemove := []string{}
-		for path, entry := range oursFiles {
-			if val, ok := theirsFiles[path]; ok {
-				if entry.Hash != val.Hash {
-					filesToRemove = append(filesToRemove, path)
-				}
-			} else {
-				filesToRemove = append(filesToRemove, path)
-			}
-		}
-
-		if err := RemoveOldFiles(filesToRemove, repo); err != nil {
+		if err := threeWayMerge(baseFiles, oursFiles, theirsFiles, &filesToRemove, &newFiles); err != nil {
 			return err
 		}
 
-		if err := RestoreWorkingDirectoryFiles(theirsFiles, oursFiles, "", repo); err != nil {
+		newHash, err = generateMergeCommit(repo, oursCommitHash, theirsCommitHash, oursBranch, theirsBranch, newFiles)
+		if err != nil {
 			return err
 		}
-
-		if err := repo.SaveIndex(theirsFiles); err != nil {
-			return err
-		}
-
-		return nil
 	}
 
-	//Three-Way-Merge
-	//take tree from ours and theirs latest commits
-	//take tree from base commit
+	if err := RemoveOldFiles(filesToRemove, repo); err != nil {
+		return err
+	}
+	if err := RestoreWorkingDirectoryFiles(newFiles, oursFiles, "", repo); err != nil {
+		return err
+	}
 
-	obj3, err := repo.LoadObject(baseCommitHash)
+	err = repo.SetBranchCommit(oursBranch, newHash)
 	if err != nil {
 		return err
 	}
-	baseCommit := obj3.(*core.Commit)
 
-	baseFiles := map[string]core.IndexEntry{}
-	if err := core.GetFilesFromTreeHash(baseCommit.TreeHash, repo, "", baseFiles); err != nil {
+	if err := repo.SaveIndex(newFiles); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func fastForwardMerge(oursFiles, theirsFiles map[string]core.IndexEntry, filesToRemove *[]string) error {
+	// if err := repo.SetBranchCommit(oursBranch, theirsCommitHash); err != nil {
+	// 	return err
+	// }
+
+	for path, entry := range oursFiles {
+		if val, ok := theirsFiles[path]; ok {
+			if entry.Hash != val.Hash {
+				*filesToRemove = append(*filesToRemove, path)
+			}
+		} else {
+			*filesToRemove = append(*filesToRemove, path)
+		}
+	}
+
+	// if err := RemoveOldFiles(filesToRemove, repo); err != nil {
+	// 	return err
+	// }
+
+	// if err := RestoreWorkingDirectoryFiles(theirsFiles, oursFiles, "", repo); err != nil {
+	// 	return err
+	// }
+
+	// if err := repo.SaveIndex(theirsFiles); err != nil {
+	// 	return err
+	// }
+
+	return nil
+}
+
+func threeWayMerge(baseFiles, oursFiles, theirsFiles map[string]core.IndexEntry, filesToRemove *[]string, mergedFiles *map[string]core.IndexEntry) error {
 	//merge these 3 into one big map
 	allPaths := make(map[string]bool)
 
@@ -115,9 +154,6 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		allPaths[p] = true
 	}
 
-	mergedFiles := make(map[string]core.IndexEntry)
-	filesToRemove := []string{}
-
 	for path := range allPaths {
 		baseEntry, inBase := baseFiles[path]
 		oursEntry, inOurs := oursFiles[path]
@@ -126,9 +162,9 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		//new files
 		if (inOurs != inTheirs) && !inBase { //inOurs xor inTheirs
 			if inOurs {
-				mergedFiles[path] = oursEntry
+				(*mergedFiles)[path] = oursEntry
 			} else if inTheirs {
-				mergedFiles[path] = theirsEntry
+				(*mergedFiles)[path] = theirsEntry
 			}
 			continue
 		}
@@ -136,11 +172,11 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		//deleting
 		if inBase {
 			if !inOurs && inTheirs && theirsEntry.Hash == baseEntry.Hash {
-				filesToRemove = append(filesToRemove, path)
+				*filesToRemove = append(*filesToRemove, path)
 				continue
 			}
 			if inOurs && !inTheirs && oursEntry.Hash == baseEntry.Hash {
-				filesToRemove = append(filesToRemove, path)
+				*filesToRemove = append(*filesToRemove, path)
 				continue
 			}
 		}
@@ -148,19 +184,19 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		//one side modified
 		if inBase && inOurs && inTheirs {
 			if baseEntry.Hash == oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
-				mergedFiles[path] = theirsEntry
+				(*mergedFiles)[path] = theirsEntry
 				continue
 			}
 
 			if baseEntry.Hash != oursEntry.Hash && baseEntry.Hash == theirsEntry.Hash {
-				mergedFiles[path] = oursEntry
+				(*mergedFiles)[path] = oursEntry
 				continue
 			}
 		}
 
 		//nothing changed
 		if inBase && inOurs && inTheirs && oursEntry.Hash == theirsEntry.Hash {
-			mergedFiles[path] = oursEntry
+			(*mergedFiles)[path] = oursEntry
 			continue
 		}
 
@@ -172,34 +208,17 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 		}
 		return fmt.Errorf("merge conflict at path %s \n", path)
 	}
-	//loop through each file; maybe add ok files to a list or dict
-	//	if unique in ours/theirs and not present in base => new, ok
-	//	if present in base and ours and file.hash(base) == file.hash(ours) and not present in theirs => deleted, ok/skip
-	//	if file.hash(base) == file.hash(ours) && file.hash(base) != file.hash(theirs); changed only in ours; ok
-	//	if file.hash(base) == file.hash(theirs) && file.hash(base) != file.hash(ours); changed only in theirs; ok
+	return nil
+}
 
-	//	if file.hash(ours) == file.hash(theirs); ok
-	//		else
-	// 			if file.hash(base) != file.hash(ours) && file.hash(base) != file.hash(theirs); conflict
-
-	//	if !conflict;
-	// 		make merge commit;
-	//		recreate new directory,
-	// 		and tree and add ours and theirscommits as parents
-
-	if err := RemoveOldFiles(filesToRemove, repo); err != nil {
-		return err
-	}
-	if err := RestoreWorkingDirectoryFiles(mergedFiles, oursFiles, "", repo); err != nil {
-		return err
-	}
+func generateMergeCommit(repo *core.Repository, oursCommitHash, theirsCommitHash, oursBranch, theirsBranch string, mergedFiles map[string]core.IndexEntry) (string, error) {
 
 	hierarchyRoot := core.CreateFolderHierarchy(mergedFiles)
 
 	treeHash, err := core.CreateTreeStructure(hierarchyRoot, repo)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	parentHashes := []string{oursCommitHash, theirsCommitHash}
@@ -214,25 +233,7 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 
 	commitHash, err := mergeCommit.StoreObject(repo)
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	err = repo.SetBranchCommit(oursBranch, commitHash)
-	if err != nil {
-		return err
-	}
-
-	if err := repo.SaveIndex(mergedFiles); err != nil {
-		return err
-	}
-	// obj, err := repo.LoadObject("35ff57b34823f848b33bf6544828fb150b811663")
-	// theirsCommit := obj.(*core.Commit)
-	// fmt.Println(theirsCommit)
-	return nil
-}
-
-func SyncWorkingDirectory(oursFiles, theirsFiles, allFiles map[string]string) {
-	// for path, hash := range allFiles{
-
-	// }
+	return commitHash, err
 }
