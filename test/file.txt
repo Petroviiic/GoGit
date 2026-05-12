@@ -1,5 +1,6 @@
 caoos
 
-mijenjam u test za 3way
+izmjena za fast forward
 
-izmjena u main za conflict
+
+izmjena na main za 3way

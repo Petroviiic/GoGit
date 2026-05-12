@@ -1,4 +1,1 @@
-modifikovao fajl u testu
-
-
-mijenjam u main za 3way
+izmjena za 3way
