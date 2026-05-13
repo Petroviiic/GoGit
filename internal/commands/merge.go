@@ -111,10 +111,6 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 }
 
 func fastForwardMerge(oursFiles, theirsFiles map[string]core.IndexEntry, filesToRemove *[]string) error {
-	// if err := repo.SetBranchCommit(oursBranch, theirsCommitHash); err != nil {
-	// 	return err
-	// }
-
 	for path, entry := range oursFiles {
 		if val, ok := theirsFiles[path]; ok {
 			if entry.Hash != val.Hash {
@@ -124,19 +120,6 @@ func fastForwardMerge(oursFiles, theirsFiles map[string]core.IndexEntry, filesTo
 			*filesToRemove = append(*filesToRemove, path)
 		}
 	}
-
-	// if err := RemoveOldFiles(filesToRemove, repo); err != nil {
-	// 	return err
-	// }
-
-	// if err := RestoreWorkingDirectoryFiles(theirsFiles, oursFiles, "", repo); err != nil {
-	// 	return err
-	// }
-
-	// if err := repo.SaveIndex(theirsFiles); err != nil {
-	// 	return err
-	// }
-
 	return nil
 }
 
