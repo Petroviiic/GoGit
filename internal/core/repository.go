@@ -78,22 +78,27 @@ func (r *Repository) Init() error {
 	return nil
 }
 
-func (r *Repository) GetCurrentBranch() string {
+func (r *Repository) GetCurrentBranch() (string, bool) {
 	data, err := os.ReadFile(r.HeadPath)
 	if err != nil {
-		return "main"
+		return "main", false
 	}
 	content := strings.TrimSpace(string(data))
 
 	if strings.HasPrefix(content, "ref: refs/heads/") {
-		return strings.TrimPrefix(content, "ref: refs/heads/")
+		return strings.TrimPrefix(content, "ref: refs/heads/"), false
 	}
 
-	return "HEAD" //detached head
+	return content, true //detached head
 }
 
-func (r *Repository) SetCurrentBranch(newBranch string) error {
-	ref := fmt.Sprintf("ref: refs/heads/%s\n", newBranch)
+func (r *Repository) SetCurrentBranch(newBranch string, isDetached bool) error {
+	ref := ""
+	if !isDetached {
+		ref = fmt.Sprintf("ref: refs/heads/%s\n", newBranch)
+	} else {
+		ref = fmt.Sprintf("%s\n", newBranch)
+	}
 
 	return os.WriteFile(r.HeadPath, []byte(ref), 0644)
 }
