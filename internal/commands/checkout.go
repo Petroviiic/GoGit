@@ -11,7 +11,7 @@ import (
 )
 
 func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error {
-	lastBranch := repo.GetCurrentBranch()
+	lastBranch, isDetached := repo.GetCurrentBranch()
 
 	if lastBranch == branch {
 		return fmt.Errorf("you are already on branch %s", branch)
@@ -23,13 +23,12 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return err
 	}
 
-	// if len(index) > 0 {
-	// 	return fmt.Errorf("staging area is not empty. commit changes before checkout")
-	// }
-
-	//Treba da cekira da li ima staged promjena, ako ima onda ne moze da se commita
-
-	lastCommit := repo.GetBranchCommit(lastBranch)
+	lastCommit := ""
+	if isDetached {
+		lastCommit = lastBranch
+	} else {
+		lastCommit = repo.GetBranchCommit(lastBranch)
+	}
 
 	if lastCommit == "" {
 		return fmt.Errorf("no commits yet, cannot create a branch")
@@ -50,8 +49,13 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		return fmt.Errorf("staging area is not empty. commit changes before checkout")
 	}
 
+	isCommitCheckout := false
+	if o, err := repo.LoadObject(branch); err == nil && o.GetType() == "commit" {
+		isCommitCheckout = true
+	}
+
 	branchFile := filepath.Join(repo.RefsDir, branch)
-	if _, err := os.Stat(branchFile); errors.Is(err, os.ErrNotExist) { //branch doesnt exist
+	if _, err := os.Stat(branchFile); !isCommitCheckout && errors.Is(err, os.ErrNotExist) { //branch doesnt exist
 		if shouldCreate {
 			if lastCommit == "" {
 				return fmt.Errorf("no commits yet, cannot create a branch")
@@ -61,7 +65,7 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 				}
 				fmt.Printf("created new branch %s\n", branch)
 
-				if err := repo.SetCurrentBranch(branch); err != nil {
+				if err := repo.SetCurrentBranch(branch, false); err != nil {
 					return err
 				}
 				fmt.Printf("switched to branch %s", branch)
@@ -72,11 +76,16 @@ func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error 
 		}
 	}
 
-	if err := repo.SetCurrentBranch(branch); err != nil {
+	if err := repo.SetCurrentBranch(branch, isCommitCheckout); err != nil {
 		return err
 	}
 
-	newBranchCommitHash := repo.GetBranchCommit(branch)
+	newBranchCommitHash := ""
+	if isCommitCheckout {
+		newBranchCommitHash = branch
+	} else {
+		newBranchCommitHash = repo.GetBranchCommit(branch)
+	}
 	newBranchCommit, err := repo.LoadObject(newBranchCommitHash)
 	if err != nil {
 		return err
