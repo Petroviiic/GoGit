@@ -64,6 +64,10 @@ func ParseCommit(content []byte) (*Commit, error) {
 
 	commit := &Commit{}
 
+	commit.BaseObject = BaseObject{
+		Type: "commit",
+	}
+
 	messageIndex := 0
 	for i, line := range lines {
 
