@@ -24,7 +24,7 @@ func RunBranch(branch string, shouldDelete, listOnly bool, repo *core.Repository
 		return err
 	}
 
-	current := repo.GetCurrentBranch()
+	current, isDetached := repo.GetCurrentBranch()
 
 	//<no_param>   	-lists all the branches
 	if listOnly {
@@ -56,6 +56,9 @@ func RunBranch(branch string, shouldDelete, listOnly bool, repo *core.Repository
 	}
 
 	//<branch_name>			-creates a new branch
+	if isDetached {
+		return fmt.Errorf("HEAD is detached. Use checkout -b <branch_name> to create a new branch")
+	}
 	if slices.Contains(branches, branch) {
 		return fmt.Errorf("a branch named %s already exists", branch)
 	}
