@@ -8,7 +8,11 @@ import (
 )
 
 func RunMerge(repo *core.Repository, theirsBranch string) error {
-	oursBranch := repo.GetCurrentBranch()
+	oursBranch, isDetached := repo.GetCurrentBranch()
+
+	if isDetached {
+		return fmt.Errorf("merge: unable to merge, HEAD is detached at %s ", oursBranch)
+	}
 	oursCommitHash := repo.GetBranchCommit(oursBranch)
 	if oursCommitHash == "" {
 		return fmt.Errorf("merge: no commits on branch %s", oursBranch)
