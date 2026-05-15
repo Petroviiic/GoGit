@@ -12,8 +12,15 @@ import (
 )
 
 func RunStatus(repo *core.Repository) error {
-	currentBranch := repo.GetCurrentBranch()
-	fmt.Printf("On branch %s\n", currentBranch)
+	currentBranch, isDetached := repo.GetCurrentBranch()
+
+	latestCommit := ""
+	if !isDetached {
+		latestCommit = repo.GetBranchCommit(currentBranch)
+		fmt.Printf("On branch %s\n", currentBranch)
+	} else {
+		latestCommit = currentBranch
+	}
 
 	workingDirFiles := make(map[string]string)
 	if err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
@@ -44,7 +51,6 @@ func RunStatus(repo *core.Repository) error {
 	}
 	//fmt.Println("\nworking directory files", workingDirFiles, len(workingDirFiles))
 
-	latestCommit := repo.GetBranchCommit(currentBranch)
 	lastCommitFiles := make(map[string]core.IndexEntry)
 
 	if latestCommit != "" {
