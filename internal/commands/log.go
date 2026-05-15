@@ -7,8 +7,14 @@ import (
 )
 
 func RunLog(limit int, repo *core.Repository) error {
-	currentBranch := repo.GetCurrentBranch()
-	latestCommit := repo.GetBranchCommit(currentBranch)
+	currentBranch, isDetached := repo.GetCurrentBranch()
+
+	latestCommit := ""
+	if !isDetached {
+		latestCommit = repo.GetBranchCommit(currentBranch)
+	} else {
+		latestCommit = currentBranch
+	}
 
 	if latestCommit == "" {
 		return fmt.Errorf("no commits on current branch")
