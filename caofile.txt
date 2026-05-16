@@ -1,0 +1,17 @@
+dodao za merge conflict u main
+
+
+<<<<<<<<< HEAD
+dodao za pravi conflict u mainu
+=========
+dodao u test branchu
+>>>>>>>>> test
+
+dodao u mainu
+<<<<<<<<< HEAD
+
+
+
+ovo sam dodao isto kasnije u mainu
+=========
+>>>>>>>>> test
