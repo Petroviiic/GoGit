@@ -14,12 +14,18 @@ func RunCommit(repo *core.Repository, message, author string) error {
 		return err
 	}
 
-	currentBranch := repo.GetCurrentBranch()
+	currentBranch, isDetached := repo.GetCurrentBranch()
 	if len(index) == 0 {
 		fmt.Printf("nothing to commit. staging area empty")
 		return nil
 	}
-	branchCommit := repo.GetBranchCommit(currentBranch)
+
+	branchCommit := ""
+	if isDetached {
+		branchCommit = currentBranch
+	} else {
+		branchCommit = repo.GetBranchCommit(currentBranch)
+	}
 
 	parentHashes := []string{branchCommit}
 
@@ -63,9 +69,15 @@ func RunCommit(repo *core.Repository, message, author string) error {
 		return err
 	}
 
-	err = repo.SetBranchCommit(currentBranch, commitHash)
-	if err != nil {
-		return err
+	if !isDetached {
+		err = repo.SetBranchCommit(currentBranch, commitHash)
+		if err != nil {
+			return err
+		}
+	} else {
+		if err := repo.SetCurrentBranch(commitHash, true); err != nil {
+			return err
+		}
 	}
 
 	// err = repo.SaveIndex(make(map[string]string))
