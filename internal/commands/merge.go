@@ -2,9 +2,11 @@ package commands
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Petroviiic/GoGit/internal/core"
+	"github.com/devsisters/go-diff3"
 )
 
 func RunMerge(repo *core.Repository, theirsBranch string) error {
@@ -85,7 +87,7 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 			return err
 		}
 
-		if err := threeWayMerge(baseFiles, oursFiles, theirsFiles, &filesToRemove, &newFiles); err != nil {
+		if err := threeWayMerge(repo, baseFiles, oursFiles, theirsFiles, &filesToRemove, &newFiles); err != nil {
 			return err
 		}
 
@@ -127,7 +129,7 @@ func fastForwardMerge(oursFiles, theirsFiles map[string]core.IndexEntry, filesTo
 	return nil
 }
 
-func threeWayMerge(baseFiles, oursFiles, theirsFiles map[string]core.IndexEntry, filesToRemove *[]string, mergedFiles *map[string]core.IndexEntry) error {
+func threeWayMerge(repo *core.Repository, baseFiles, oursFiles, theirsFiles map[string]core.IndexEntry, filesToRemove *[]string, mergedFiles *map[string]core.IndexEntry) error {
 	//merge these 3 into one big map
 	allPaths := make(map[string]bool)
 
@@ -190,6 +192,9 @@ func threeWayMerge(baseFiles, oursFiles, theirsFiles map[string]core.IndexEntry,
 		//TODO : dodaj git diff, tj da prikaze sta je konkretno conflictovano
 		//TODO : obrisi komentare i procisti ovo
 
+		if err := HandleConflict(repo, oursEntry.Hash, theirsEntry.Hash, baseEntry.Hash); err != nil {
+			return fmt.Errorf("merge conflict at path %s \n", path)
+		}
 		if inBase && baseEntry.Hash != oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
 			return fmt.Errorf("merge conflict at path %s \n", path)
 		}
@@ -223,4 +228,34 @@ func generateMergeCommit(repo *core.Repository, oursCommitHash, theirsCommitHash
 		return "", err
 	}
 	return commitHash, err
+}
+
+func HandleConflict(repo *core.Repository, oursHash, theirsHash, baseHash string) error {
+	baseContent := ""
+	oursContent := ""
+	theirsContent := ""
+	if obj, err := repo.LoadObject(theirsHash); err != nil {
+		theirsContent = string(obj.GetContent())
+	}
+	if obj, err := repo.LoadObject(oursHash); err != nil {
+		oursContent = string(obj.GetContent())
+	}
+	if obj, err := repo.LoadObject(baseHash); err != nil {
+		baseContent = string(obj.GetContent())
+	}
+
+	result, err := diff3.Merge(
+		strings.NewReader(oursContent),
+		strings.NewReader(baseContent),
+		strings.NewReader(theirsContent),
+		true,
+		oursHash,
+		theirsHash,
+	)
+
+	if err != nil {
+		return err
+	}
+	fmt.Println(result.Conflicts, result.Result)
+	return nil
 }
