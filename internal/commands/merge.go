@@ -2,6 +2,9 @@ package commands
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -87,7 +90,7 @@ func RunMerge(repo *core.Repository, theirsBranch string) error {
 			return err
 		}
 
-		if err := threeWayMerge(repo, baseFiles, oursFiles, theirsFiles, &filesToRemove, &newFiles); err != nil {
+		if err := threeWayMerge(repo, baseFiles, oursFiles, theirsFiles, &filesToRemove, &newFiles, theirsBranch); err != nil {
 			return err
 		}
 
@@ -129,7 +132,7 @@ func fastForwardMerge(oursFiles, theirsFiles map[string]core.IndexEntry, filesTo
 	return nil
 }
 
-func threeWayMerge(repo *core.Repository, baseFiles, oursFiles, theirsFiles map[string]core.IndexEntry, filesToRemove *[]string, mergedFiles *map[string]core.IndexEntry) error {
+func threeWayMerge(repo *core.Repository, baseFiles, oursFiles, theirsFiles map[string]core.IndexEntry, filesToRemove *[]string, mergedFiles *map[string]core.IndexEntry, theirsBranchName string) error {
 	//merge these 3 into one big map
 	allPaths := make(map[string]bool)
 
@@ -192,8 +195,8 @@ func threeWayMerge(repo *core.Repository, baseFiles, oursFiles, theirsFiles map[
 		//TODO : dodaj git diff, tj da prikaze sta je konkretno conflictovano
 		//TODO : obrisi komentare i procisti ovo
 
-		if err := HandleConflict(repo, oursEntry.Hash, theirsEntry.Hash, baseEntry.Hash); err != nil {
-			return fmt.Errorf("merge conflict at path %s \n", path)
+		if err := HandleConflict(repo, oursEntry.Hash, theirsEntry.Hash, baseEntry.Hash, theirsBranchName, path); err != nil {
+			return fmt.Errorf("merge conflict at path %s with error %v\n", path, err)
 		}
 		if inBase && baseEntry.Hash != oursEntry.Hash && baseEntry.Hash != theirsEntry.Hash {
 			return fmt.Errorf("merge conflict at path %s \n", path)
@@ -230,17 +233,17 @@ func generateMergeCommit(repo *core.Repository, oursCommitHash, theirsCommitHash
 	return commitHash, err
 }
 
-func HandleConflict(repo *core.Repository, oursHash, theirsHash, baseHash string) error {
+func HandleConflict(repo *core.Repository, oursHash, theirsHash, baseHash, theirsBranch, oursFile string) error {
 	baseContent := ""
 	oursContent := ""
 	theirsContent := ""
-	if obj, err := repo.LoadObject(theirsHash); err != nil {
+	if obj, err := repo.LoadObject(theirsHash); err == nil {
 		theirsContent = string(obj.GetContent())
 	}
-	if obj, err := repo.LoadObject(oursHash); err != nil {
+	if obj, err := repo.LoadObject(oursHash); err == nil {
 		oursContent = string(obj.GetContent())
 	}
-	if obj, err := repo.LoadObject(baseHash); err != nil {
+	if obj, err := repo.LoadObject(baseHash); err == nil {
 		baseContent = string(obj.GetContent())
 	}
 
@@ -249,13 +252,23 @@ func HandleConflict(repo *core.Repository, oursHash, theirsHash, baseHash string
 		strings.NewReader(baseContent),
 		strings.NewReader(theirsContent),
 		true,
-		oursHash,
-		theirsHash,
+		"HEAD",
+		theirsBranch,
 	)
 
 	if err != nil {
 		return err
 	}
-	fmt.Println(result.Conflicts, result.Result)
+
+	b, err := io.ReadAll(result.Result)
+
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(filepath.Join(repo.WorkTree, oursFile), b, 0644); err != nil {
+		return err
+	}
+
 	return nil
 }
