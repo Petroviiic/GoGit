@@ -171,14 +171,32 @@ func main() {
 			os.Exit(1)
 		}
 	case "merge":
-		if len(args) != 1 {
-			fmt.Fprintln(os.Stderr, "Error: Arguments malformed; use git merge <branch_to_merge>")
+		if len(args) > 2 {
+			fmt.Fprintln(os.Stderr, "Error: Too many arguments")
 			os.Exit(1)
 		}
+
+		shouldAbort := false
+		if len(args) == 2 {
+			if args[1] != "--abort" {
+				fmt.Fprintf(os.Stderr, "Error: unknown option: -%s \n", args[1])
+				fmt.Fprintf(os.Stderr, "Maybe you want --abort?\n")
+				os.Exit(1)
+			}
+			shouldAbort = true
+		}
+
 		mergeWith := args[0]
-		if err := commands.RunMerge(repo, mergeWith); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
+		if !shouldAbort {
+			if err := commands.RunMerge(repo, mergeWith); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			if err := commands.AbortMerge(repo); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
