@@ -11,6 +11,10 @@ import (
 )
 
 func RunCheckout(branch string, shouldCreate bool, repo *core.Repository) error {
+
+	if _, exists := repo.MergeHEADExists(); exists {
+		return fmt.Errorf("merge conflict not resolved. commit changes or abort merge before checking out to another branch")
+	}
 	lastBranch, isDetached := repo.GetCurrentBranch()
 
 	if lastBranch == branch {
