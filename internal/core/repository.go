@@ -13,10 +13,11 @@ type Repository struct {
 	WorkTree string
 	GitDir   string
 
-	ObjectsDir string
-	RefsDir    string
-	IndexPath  string
-	HeadPath   string
+	ObjectsDir    string
+	RefsDir       string
+	IndexPath     string
+	HeadPath      string
+	MergeHeadPath string
 }
 
 func NewRepository(args []string) (*Repository, error) {
@@ -33,12 +34,13 @@ func NewRepository(args []string) (*Repository, error) {
 	gitDir := filepath.Join(path, ".gogit")
 
 	repo := &Repository{
-		WorkTree:   absPath,
-		GitDir:     gitDir,
-		ObjectsDir: filepath.Join(gitDir, "objects"),
-		RefsDir:    filepath.Join(gitDir, "refs/heads"),
-		IndexPath:  filepath.Join(gitDir, "index"),
-		HeadPath:   filepath.Join(gitDir, "HEAD"),
+		WorkTree:      absPath,
+		GitDir:        gitDir,
+		ObjectsDir:    filepath.Join(gitDir, "objects"),
+		RefsDir:       filepath.Join(gitDir, "refs/heads"),
+		IndexPath:     filepath.Join(gitDir, "index"),
+		HeadPath:      filepath.Join(gitDir, "HEAD"),
+		MergeHeadPath: filepath.Join(gitDir, "MERGE_HEAD"),
 	}
 
 	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
@@ -203,4 +205,18 @@ func (repo *Repository) GetMergeBase(oursCommitHash, theirsCommitHash string) (s
 		return "", fmt.Errorf("something went wrong, no merge base found")
 	}
 	return result, nil
+}
+
+func (repo *Repository) CreateMergeHEAD(commitHash string) error {
+	return os.WriteFile(repo.MergeHeadPath, []byte(commitHash), 0644)
+}
+func (repo *Repository) MergeHEADExists() ([]byte, bool) {
+	if data, err := os.ReadFile(repo.MergeHeadPath); err == nil {
+		return data, true
+	}
+
+	return []byte{}, false
+}
+func (repo *Repository) DeleteMergeHEAD() error {
+	return os.Remove(repo.MergeHeadPath)
 }
