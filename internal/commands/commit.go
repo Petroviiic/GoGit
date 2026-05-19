@@ -28,6 +28,11 @@ func RunCommit(repo *core.Repository, message, author string) error {
 	}
 
 	parentHashes := []string{branchCommit}
+	isMerge := false
+	if theirsCommitHash, exists := repo.MergeHEADExists(); exists {
+		parentHashes = append(parentHashes, string(theirsCommitHash))
+		isMerge = true
+	}
 
 	hierarchyRoot := core.CreateFolderHierarchy(index)
 
@@ -37,7 +42,7 @@ func RunCommit(repo *core.Repository, message, author string) error {
 		return err
 	}
 
-	if len(parentHashes) > 0 {
+	if !isMerge && len(parentHashes) > 0 {
 		for _, hash := range parentHashes {
 			if hash == "" {
 				fmt.Println("hash empty, skipping")
@@ -55,6 +60,7 @@ func RunCommit(repo *core.Repository, message, author string) error {
 			}
 		}
 	}
+
 	commit := core.NewCommit(
 		author,
 		author,
@@ -80,11 +86,11 @@ func RunCommit(repo *core.Repository, message, author string) error {
 		}
 	}
 
-	// err = repo.SaveIndex(make(map[string]string))
-	// if err != nil {
-	// 	return err
-	// }
-
+	if isMerge {
+		if err := repo.DeleteMergeHEAD(); err != nil {
+			return err
+		}
+	}
 	fmt.Printf("Created commit %s on branch %s", commitHash, currentBranch)
 	return nil
 }
